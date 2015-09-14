@@ -1,7 +1,7 @@
 module Main where
     
 import Data.Conduit
-
+    
 import Options.Applicative
   
 import qualified Data.Conduit.Text as CT
@@ -23,14 +23,17 @@ cmdArguments = CmdArguments
                    
 countLines :: (MonadResource m) => FilePath -> m Int
 countLines file = CB.sourceFile file $= CT.lines $$ CB.length
-        
-wc :: MonadResource m => CmdArguments -> ConduitM i String m ()
-wc (CmdArguments True files) = 
-    forM_ files $ \file -> do count <- countLines file
-                              yield $ show count ++ " " ++ file
+
+wc :: CmdArguments -> IO ()
+wc (CmdArguments optLines optFiles) =
+    runResourceT $ forM_ optFiles $ 
+                     \file -> when optLines $ do countLines file >>= printCount
+                                                 printFile file
+    where
+      printCount = lift . putStr . (++ " ") . show
+      printFile = lift . putStrLn 
 
 main :: IO ()
-main = do args <- execParser parserInfo 
-          runResourceT $ wc args $$ CB.mapM_ $ lift . putStrLn
+main = execParser parserInfo >>= wc
     where
       parserInfo = info (helper <*> cmdArguments) fullDesc
