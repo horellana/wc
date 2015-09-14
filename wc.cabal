@@ -20,5 +20,6 @@ executable wc
                      , conduit >= 1.2.5
                      , conduit-combinators >= 1.0.3
                      , conduit-extra >= 1.1.9.1
+                     , mtl >= 2.2.1
+                     , optparse-applicative >= 0.11.0
                      , resourcet >= 1.1.6
-                     , optparse-applicative >= 0.11.0                  

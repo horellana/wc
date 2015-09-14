@@ -8,9 +8,8 @@ import qualified Data.Conduit.Text as CT
 import qualified Data.Conduit.Combinators as CB
 
 import Control.Monad
+import Control.Monad.Trans
 import Control.Monad.Trans.Resource
-    
-import Data.List (intercalate)
     
 data CmdArguments = CmdArguments { optLines :: Bool, 
                                    optFiles :: [FilePath] }
@@ -25,15 +24,13 @@ cmdArguments = CmdArguments
 countLines :: (MonadResource m) => FilePath -> m Int
 countLines file = CB.sourceFile file $= CT.lines $$ CB.length
         
-wc :: CmdArguments -> IO String
-wc (CmdArguments True files) = do
-  results <- runResourceT $ forM files $ 
-       \file -> do count <- countLines file
-                   return $ show count ++ " " ++ file
-  return $ intercalate "\n" results
-                          
+wc :: MonadResource m => CmdArguments -> ConduitM i String m ()
+wc (CmdArguments True files) = 
+    forM_ files $ \file -> do count <- countLines file
+                              yield $ show count ++ " " ++ file
+
 main :: IO ()
-main = execParser parserInfo >>= wc >>= putStrLn
+main = do args <- execParser parserInfo 
+          runResourceT $ wc args $$ CB.mapM_ $ lift . putStrLn
     where
       parserInfo = info (helper <*> cmdArguments) fullDesc
-                   
