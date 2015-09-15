@@ -23,3 +23,4 @@ executable wc
                      , mtl >= 2.2.1
                      , optparse-applicative >= 0.11.0
                      , resourcet >= 1.1.6
+                     , text >= 1.2.1.3
