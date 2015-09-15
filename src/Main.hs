@@ -27,21 +27,21 @@ cmdArguments = CmdArguments
                           <> help "Count characters in FILES")
                <*> many (argument str (metavar "FILES"))
 
-countLines :: (MonadResource m) => FilePath -> m Int
-countLines file = CB.sourceFile file 
+countLines :: (Monad m, Num b) => Conduit () m T.Text -> m b
+countLines source = source 
                   $= (CB.linesUnbounded :: Monad m => Conduit T.Text m T.Text)
                   $$ CB.length
                   
-countChars :: (MonadResource m) => FilePath -> m Int
-countChars file = CB.sourceFile file $= CB.linesUnbounded $= charSource $$ CB.length
+countChars :: (Monad m, Num b) => Conduit () m T.Text -> m b
+countChars source = source $= CB.linesUnbounded $= charSource $$ CB.length
     where
       charSource = do line <- await
                       case line of
                         Just line -> forM_ (T.chunksOf 1 line) yield >> charSource
                         Nothing -> return ()
 
-countWords :: (MonadResource m) => FilePath -> m Int
-countWords file = CB.sourceFile file $= CB.linesUnbounded $= wordSource $$ CB.length
+countWords :: (Monad m, Num b) => Conduit () m T.Text -> m b
+countWords source = source $= CB.linesUnbounded $= wordSource $$ CB.length
     where
       wordSource = do line <- await
                       case line of
@@ -51,9 +51,9 @@ countWords file = CB.sourceFile file $= CB.linesUnbounded $= wordSource $$ CB.le
 wc :: CmdArguments -> IO ()
 wc (CmdArguments optLines optWords optChars optFiles) =
     runResourceT $ forM_ optFiles $ \file ->
-        do when optLines $ countLines file >>= printCount
-           when optWords $ countWords file >>= printCount
-           when optChars $ countChars file >>= printCount
+        do when optLines $ (countLines $ CB.sourceFile file) >>= printCount
+           when optWords $ (countWords $ CB.sourceFile file) >>= printCount
+           when optChars $ (countChars $ CB.sourceFile file) >>= printCount
            printFile file
     where
       printCount = lift . putStr . (++ " ") . show
