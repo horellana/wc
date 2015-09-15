@@ -1,17 +1,13 @@
 module Main where
     
-import Data.Conduit
-import qualified Data.Text as T
-    
-import Options.Applicative
-  
-import qualified Data.Conduit.Text as CT
-import qualified Data.Conduit.Combinators as CB
-
+import Data.Conduit   
 import Control.Monad
 import Control.Monad.Trans
+import Options.Applicative
+import qualified Data.Text as T
 import Control.Monad.Trans.Resource
-    
+import qualified Data.Conduit.Combinators as CB
+
 data CmdArguments = CmdArguments { optLines :: Bool, 
                                    optWords :: Bool,
                                    optChars :: Bool,
@@ -32,10 +28,12 @@ cmdArguments = CmdArguments
                <*> many (argument str (metavar "FILES"))
 
 countLines :: (MonadResource m) => FilePath -> m Int
-countLines file = CB.sourceFile file $= CT.lines $$ CB.length
+countLines file = CB.sourceFile file 
+                  $= (CB.linesUnbounded :: Monad m => Conduit T.Text m T.Text)
+                  $$ CB.length
                   
 countChars :: (MonadResource m) => FilePath -> m Int
-countChars file = CB.sourceFile file $= CT.lines $= charSource $$ CB.length
+countChars file = CB.sourceFile file $= CB.linesUnbounded $= charSource $$ CB.length
     where
       charSource = do line <- await
                       case line of
@@ -43,7 +41,7 @@ countChars file = CB.sourceFile file $= CT.lines $= charSource $$ CB.length
                         Nothing -> return ()
 
 countWords :: (MonadResource m) => FilePath -> m Int
-countWords file = CB.sourceFile file $= CT.lines $= wordSource $$ CB.length
+countWords file = CB.sourceFile file $= CB.linesUnbounded $= wordSource $$ CB.length
     where
       wordSource = do line <- await
                       case line of
