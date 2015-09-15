@@ -4,7 +4,7 @@ import Data.Conduit
 import Control.Monad
 import Control.Monad.Trans
 import Options.Applicative
-import qualified Data.Text as T
+import qualified Data.Text.Lazy as T
 import Control.Monad.Trans.Resource
 import qualified Data.Conduit.Combinators as CB
 
@@ -35,31 +35,24 @@ countLines source = source
 countChars :: (Monad m, Num b) => Conduit () m T.Text -> m b
 countChars source = source $= CB.linesUnbounded $= charSource $$ CB.length
     where
-      charSource = do line <- await
-                      case line of
-                        Just line -> forM_ (T.chunksOf 1 line) yield >> charSource
-                        Nothing -> return ()
+      charSource = awaitForever $ \line -> forM_ (T.chunksOf 1 line) yield 
 
 countWords :: (Monad m, Num b) => Conduit () m T.Text -> m b
 countWords source = source $= CB.linesUnbounded $= wordSource $$ CB.length
     where
-      wordSource = do line <- await
-                      case line of
-                        Just line -> forM_ (T.words line) yield >> wordSource
-                        Nothing -> return ()
+      wordSource = awaitForever $ \line -> forM_ (T.words line) yield
 
 wc :: CmdArguments -> IO ()
-wc (CmdArguments optLines optWords optChars optFiles) 
-    | null optFiles = runResourceT $ doCount CB.stdin >> (lift . putStr) "\n"
-    | otherwise = runResourceT $ forM_ optFiles $ \file -> do
-                    doCount $ CB.sourceFile file
-                    printFile file
+wc (CmdArguments optLines optWords optChars optFiles) = runResourceT $ f optFiles
     where
+      f [] = doCount CB.stdin >> (lift . putStr) "\n"
+      f files = forM_ files $ \file -> do doCount $ CB.sourceFile file
+                                          printFile file
       printFile = lift . putStrLn 
       printCount = lift . putStr . (++ " ") . show
-      doCount source = do when optLines $ (countLines  source) >>= printCount
-                          when optWords $ (countWords  source) >>= printCount
-                          when optChars $ (countChars  source) >>= printCount
+      doCount source = do when optLines $ countLines  source >>= printCount
+                          when optWords $ countWords  source >>= printCount
+                          when optChars $ countChars  source >>= printCount
 
 main :: IO ()
 main = execParser parserInfo >>= wc
