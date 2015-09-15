@@ -49,15 +49,17 @@ countWords source = source $= CB.linesUnbounded $= wordSource $$ CB.length
                         Nothing -> return ()
 
 wc :: CmdArguments -> IO ()
-wc (CmdArguments optLines optWords optChars optFiles) =
-    runResourceT $ forM_ optFiles $ \file -> do doCount $ CB.sourceFile file
-                                                printFile file
+wc (CmdArguments optLines optWords optChars optFiles) 
+    | null optFiles = runResourceT $ doCount CB.stdin >> (lift . putStr) "\n"
+    | otherwise = runResourceT $ forM_ optFiles $ \file -> do
+                    doCount $ CB.sourceFile file
+                    printFile file
     where
+      printFile = lift . putStrLn 
+      printCount = lift . putStr . (++ " ") . show
       doCount source = do when optLines $ (countLines  source) >>= printCount
                           when optWords $ (countWords  source) >>= printCount
                           when optChars $ (countChars  source) >>= printCount
-      printCount = lift . putStr . (++ " ") . show
-      printFile = lift . putStrLn 
 
 main :: IO ()
 main = execParser parserInfo >>= wc
