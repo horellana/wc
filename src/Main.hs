@@ -20,8 +20,10 @@ data CmdArguments = CmdArguments { optLines :: Bool,
 cmdArguments :: Parser CmdArguments
 cmdArguments = CmdArguments 
                <$> switch (long "lines"
+                          <> short 'l'
                           <> help "Count lines in FILES")
                <*> switch (long "words"
+                          <> short 'w'
                           <> help "Count words in FILES")
                <*> many (argument str (metavar "FILES"))
                    
