@@ -50,12 +50,12 @@ countWords source = source $= CB.linesUnbounded $= wordSource $$ CB.length
 
 wc :: CmdArguments -> IO ()
 wc (CmdArguments optLines optWords optChars optFiles) =
-    runResourceT $ forM_ optFiles $ \file ->
-        do when optLines $ (countLines $ CB.sourceFile file) >>= printCount
-           when optWords $ (countWords $ CB.sourceFile file) >>= printCount
-           when optChars $ (countChars $ CB.sourceFile file) >>= printCount
-           printFile file
+    runResourceT $ forM_ optFiles $ \file -> do doCount $ CB.sourceFile file
+                                                printFile file
     where
+      doCount source = do when optLines $ (countLines  source) >>= printCount
+                          when optWords $ (countWords  source) >>= printCount
+                          when optChars $ (countChars  source) >>= printCount
       printCount = lift . putStr . (++ " ") . show
       printFile = lift . putStrLn 
 
