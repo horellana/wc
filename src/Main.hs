@@ -12,8 +12,7 @@ data CmdArguments = CmdArguments { optLines :: Bool,
                                    optWords :: Bool,
                                    optChars :: Bool,
                                    optFiles :: [FilePath] }
-                  deriving (Show)
-
+                  
 cmdArguments :: Parser CmdArguments
 cmdArguments = CmdArguments 
                <$> switch (long "lines"
@@ -50,9 +49,9 @@ wc (CmdArguments optLines optWords optChars optFiles) = runResourceT $ f optFile
                                           printFile file
       printFile = lift . putStrLn 
       printCount = lift . putStr . (++ " ") . show
-      doCount source = do when optLines $ countLines  source >>= printCount
-                          when optWords $ countWords  source >>= printCount
-                          when optChars $ countChars  source >>= printCount
+      doCount source = do when optLines $ countLines source >>= printCount
+                          when optWords $ countWords source >>= printCount
+                          when optChars $ countChars source >>= printCount
 
 main :: IO ()
 main = execParser parserInfo >>= wc
