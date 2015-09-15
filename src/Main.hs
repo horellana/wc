@@ -14,6 +14,7 @@ import Control.Monad.Trans.Resource
     
 data CmdArguments = CmdArguments { optLines :: Bool, 
                                    optWords :: Bool,
+                                   optChars :: Bool,
                                    optFiles :: [FilePath] }
                   deriving (Show)
 
@@ -25,25 +26,37 @@ cmdArguments = CmdArguments
                <*> switch (long "words"
                           <> short 'w'
                           <> help "Count words in FILES")
+               <*> switch (long "chars"
+                          <> short 'm'
+                          <> help "Count characters in FILES")
                <*> many (argument str (metavar "FILES"))
-                   
+
 countLines :: (MonadResource m) => FilePath -> m Int
 countLines file = CB.sourceFile file $= CT.lines $$ CB.length
                   
-countWords :: (MonadResource m) => FilePath -> m Int
-countWords file = CB.sourceFile file $= CT.lines $= wordsSource $$ CB.length
+countChars :: (MonadResource m) => FilePath -> m Int
+countChars file = CB.sourceFile file $= CT.lines $= charSource $$ CB.length
     where
-      wordsSource = do line <- await
-                       case line of 
-                         Just line -> forM_ (T.words line) yield >> wordsSource
-                         Nothing -> return ()
+      charSource = do line <- await
+                      case line of
+                        Just line -> forM_ (T.chunksOf 1 line) yield >> charSource
+                        Nothing -> return ()
+
+countWords :: (MonadResource m) => FilePath -> m Int
+countWords file = CB.sourceFile file $= CT.lines $= wordSource $$ CB.length
+    where
+      wordSource = do line <- await
+                      case line of
+                        Just line -> forM_ (T.words line) yield >> wordSource
+                        Nothing -> return ()
 
 wc :: CmdArguments -> IO ()
-wc (CmdArguments optLines optWords optFiles) =
-    runResourceT $ forM_ optFiles $ 
-                     \file -> do when optLines $ countLines file >>= printCount
-                                 when optWords $ countWords file >>= printCount
-                                 printFile file
+wc (CmdArguments optLines optWords optChars optFiles) =
+    runResourceT $ forM_ optFiles $ \file ->
+        do when optLines $ countLines file >>= printCount
+           when optWords $ countWords file >>= printCount
+           when optChars $ countChars file >>= printCount
+           printFile file
     where
       printCount = lift . putStr . (++ " ") . show
       printFile = lift . putStrLn 
