@@ -31,10 +31,8 @@ countLines source = source
                   $= (CB.linesUnbounded :: Monad m => Conduit T.Text m T.Text)
                   $$ CB.length
                   
-countChars :: (Monad m, Num b) => Conduit () m T.Text -> m b
-countChars source = source $= CB.linesUnbounded $= charSource $$ CB.length
-    where
-      charSource = awaitForever $ \line -> forM_ (T.chunksOf 1 line) yield 
+-- countChars :: (Monad m, Num b) => Conduit () m T.Text -> m i
+countChars source = source $= (awaitForever $ yield . T.length) $$ CB.sum
 
 countWords :: (Monad m, Num b) => Conduit () m T.Text -> m b
 countWords source = source $= CB.linesUnbounded $= wordSource $$ CB.length
@@ -45,8 +43,7 @@ wc :: CmdArguments -> IO ()
 wc (CmdArguments optLines optWords optChars optFiles) = runResourceT $ f optFiles
     where
       f [] = doCount CB.stdin >> (lift . putStr) "\n"
-      f files = forM_ files $ \file -> do doCount $ CB.sourceFile file
-                                          printFile file
+      f files = forM_ files $ \file -> doCount (CB.sourceFile file) *> printFile file
       printFile = lift . putStrLn 
       printCount = lift . putStr . (++ " ") . show
       doCount source = do when optLines $ countLines source >>= printCount
