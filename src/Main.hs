@@ -1,5 +1,5 @@
 module Main where
-    
+
 import Data.Conduit   
 import Control.Monad
 import Control.Monad.Trans
@@ -11,8 +11,11 @@ import qualified Data.Conduit.Combinators as CB
 data CmdArguments = CmdArguments { optLines :: Bool, 
                                    optWords :: Bool,
                                    optChars :: Bool,
+                                   optVersion :: Bool,
                                    optFiles :: [FilePath] }
-                  
+
+version = "0.8.3.0"
+
 cmdArguments :: Parser CmdArguments
 cmdArguments = CmdArguments 
                <$> switch (long "lines"
@@ -24,15 +27,18 @@ cmdArguments = CmdArguments
                <*> switch (long "chars"
                           <> short 'm'
                           <> help "Count characters in FILES")
+               <*> switch (long "version"
+                          <> short 'v'
+                          <> help "Show program version and exit")
                <*> many (argument str (metavar "FILES"))
 
 countLines :: (Monad m, Num b) => Conduit () m T.Text -> m b
 countLines source = source 
-                  $= (CB.linesUnbounded :: Monad m => Conduit T.Text m T.Text)
-                  $$ CB.length
+                    $= (CB.linesUnbounded :: Monad m => Conduit T.Text m T.Text)
+                    $$ CB.length
                   
 -- countChars :: (Monad m, Num b) => Conduit () m T.Text -> m i
-countChars source = source $= (awaitForever $ yield . T.length) $$ CB.sum
+countChars source = source $= awaitForever (yield . T.length) $$ CB.sum
 
 countWords :: (Monad m, Num b) => Conduit () m T.Text -> m b
 countWords source = source $= CB.linesUnbounded $= wordSource $$ CB.length
@@ -40,7 +46,8 @@ countWords source = source $= CB.linesUnbounded $= wordSource $$ CB.length
       wordSource = awaitForever $ \line -> forM_ (T.words line) yield
 
 wc :: CmdArguments -> IO ()
-wc (CmdArguments optLines optWords optChars optFiles) = runResourceT $ f optFiles
+wc (CmdArguments _ _ _ True _) = putStrLn version
+wc (CmdArguments optLines optWords optChars _ optFiles) = runResourceT $ f optFiles
     where
       f [] = doCount CB.stdin >> (lift . putStr) "\n"
       f files = forM_ files $ \file -> doCount (CB.sourceFile file) *> printFile file
