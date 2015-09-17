@@ -1,5 +1,5 @@
 name:                wc
-version:             0.1.0.0
+version:             0.8.3.0
 synopsis:            Simple project template from stack
 description:         Please see README.md
 homepage:            http://github.com/githubuser/wc#readme
@@ -23,3 +23,4 @@ executable wc
                      , optparse-applicative >= 0.11.0
                      , resourcet >= 1.1.6
                      , text >= 1.2.1.3
+                     , bytestring
